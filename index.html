@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MigaCiclo</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+<div class="p-4 font-sans max-w-md mx-auto min-h-screen bg-pink-50 text-gray-800">
+  
+  <!-- Header / User Info -->
+  <header class="flex justify-between items-center mb-6">
+    <div class="flex items-center gap-2">
+      <span class="text-2xl">🦋</span>
+      <h1 class="text-xl font-bold text-purple-800">MigaCiclo</h1>
+    </div>
+    <div id="user-pill" class="hidden bg-purple-200 px-3 py-1 rounded-full text-xs font-semibold text-purple-900">
+      <span id="header-user-name"></span>
+    </div>
+  </header>
+
+  <p id="connection-status" class="mb-4 text-xs text-gray-600" role="status" aria-live="polite"></p>
+
+  <!-- SCREEN 1: Cadastro -->
+  <div id="screen-1" class="screen active bg-white p-6 rounded-2xl shadow-md">
+    <h2 class="text-lg font-semibold text-purple-900 mb-2">Boas-vindas ao MigaCiclo!</h2>
+    <p class="text-sm text-gray-600 mb-4">Sua assistente Miga vai te ajudar a acompanhar o seu ciclo.</p>
+    <form onsubmit="MigaCiclo.handleScreen1Submit(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Seu Nome</label>
+        <input type="text" id="user-name" required class="w-full p-2 border border-purple-200 rounded-lg text-sm" placeholder="Como quer ser chamada?">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Sua Idade</label>
+        <input type="number" id="user-age" required class="w-full p-2 border border-purple-200 rounded-lg text-sm" placeholder="Ex: 22">
+      </div>
+      <button type="submit" class="w-full py-2 bg-purple-600 text-white rounded-lg font-semibold text-sm hover:bg-purple-700 transition">Continuar</button>
+    </form>
+  </div>
+
+  <!-- SCREEN 2: Configuração do Ciclo -->
+  <div id="screen-2" class="screen hidden bg-white p-6 rounded-2xl shadow-md">
+    <h2 class="text-lg font-semibold text-purple-900 mb-2">Sobre o seu Ciclo</h2>
+    <form onsubmit="MigaCiclo.handleScreen2Submit(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Duração média do ciclo (dias)</label>
+        <input type="number" id="cycle-duration" value="28" required class="w-full p-2 border border-purple-200 rounded-lg text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Duração da menstruação (dias)</label>
+        <input type="number" id="period-duration" value="5" required class="w-full p-2 border border-purple-200 rounded-lg text-sm">
+      </div>
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Data da última menstruação</label>
+        <input type="date" id="last-period-date" required class="w-full p-2 border border-purple-200 rounded-lg text-sm">
+      </div>
+      <button type="submit" class="w-full py-2 bg-purple-600 text-white rounded-lg font-semibold text-sm hover:bg-purple-700 transition">Gerar Calendário</button>
+    </form>
+  </div>
+
+  <!-- SCREEN 3: Calendário -->
+  <div id="screen-3" class="screen hidden bg-white p-6 rounded-2xl shadow-md space-y-4">
+    <div class="flex justify-between items-center">
+      <button onclick="MigaCiclo.changeMonth(-1)" class="px-2 py-1 bg-purple-100 rounded text-purple-800 font-bold">&lt;</button>
+      <span id="calendar-month-year" class="font-bold text-sm text-purple-900"></span>
+      <button onclick="MigaCiclo.changeMonth(1)" class="px-2 py-1 bg-purple-100 rounded text-purple-800 font-bold">&gt;</button>
+    </div>
+
+    <div class="grid grid-cols-7 gap-1 text-center text-xs font-bold text-gray-500">
+      <div>Dom</div><div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div><div>Sáb</div>
+    </div>
+    
+    <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-xs"></div>
+
+    <div id="cycle-phase-card" class="bg-purple-50 p-3 rounded-lg border border-purple-200">
+      <h3 id="cycle-phase-title" class="font-bold text-purple-900 text-sm"></h3>
+      <p id="cycle-phase-desc" class="text-xs text-gray-600 mt-1"></p>
+    </div>
+
+    <div class="grid grid-cols-2 gap-2 text-xs">
+      <div class="p-2 bg-gray-50 rounded"><strong>Fluxo:</strong> <span id="stat-flux">-</span></div>
+      <div class="p-2 bg-gray-50 rounded"><strong>Humor:</strong> <span id="stat-mood">-</span></div>
+      <div class="p-2 bg-gray-50 rounded"><strong>Energia:</strong> <span id="stat-energy">-</span></div>
+      <div class="p-2 bg-gray-50 rounded"><strong>Cólica:</strong> <span id="stat-cramps">-</span></div>
+    </div>
+
+    <div class="flex gap-2">
+      <button onclick="MigaCiclo.navigateToScreen(4)" class="flex-1 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg">Anotar Sintomas</button>
+      <button onclick="MigaCiclo.triggerMigaInteractiveTip()" class="px-3 py-2 bg-yellow-400 text-yellow-900 text-xs font-semibold rounded-lg">🦋 Dica Miga</button>
+    </div>
+  </div>
+
+  <!-- SCREEN 4: Sintomas -->
+  <div id="screen-4" class="screen hidden bg-white p-6 rounded-2xl shadow-md space-y-4">
+    <h2 class="text-lg font-semibold text-purple-900">Registrar Sintomas</h2>
+    <p id="report-date-display" class="text-xs text-purple-700 font-bold"></p>
+
+    <form onsubmit="MigaCiclo.handleScreen4Submit(event)" class="space-y-3">
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Humor</label>
+        <div class="options-grid flex gap-2" data-group="mood">
+          <button type="button" class="opt-btn flex-1 py-1 text-xs border border-purple-200 rounded" data-val="Bem">Bem</button>
+          <button type="button" class="opt-btn flex-1 py-1 text-xs border border-purple-200 rounded" data-val="Sensível">Sensível</button>
+          <button type="button" class="opt-btn flex-1 py-1 text-xs border border-purple-200 rounded" data-val="Irritada">Irritada</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Fluxo</label>
+        <div class="options-grid flex gap-2" data-group="flow">
+          <button type="button" class="opt-btn flex-1 py-1 text-xs border border-purple-200 rounded" data-val="Leve">Leve</button>
+          <button type="button" class="opt-btn flex-1 py-1 text-xs border border-purple-200 rounded" data-val="Médio">Médio</button>
+          <button type="button" class="opt-btn flex-1 py-1 text-xs border border-purple-200 rounded" data-val="Intenso">Intenso</button>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-gray-700 mb-1">Notas / Diário</label>
+        <textarea id="diary-notes" class="w-full p-2 border border-purple-200 rounded-lg text-xs" rows="2" placeholder="Como você está se sentindo hoje?"></textarea>
+      </div>
+
+      <div class="flex gap-2">
+        <button type="submit" class="flex-1 py-2 bg-purple-600 text-white text-xs font-semibold rounded-lg">Salvar</button>
+        <button type="button" onclick="MigaCiclo.navigateToScreen(3)" class="py-2 px-3 bg-gray-200 text-gray-700 text-xs rounded-lg">Voltar</button>
+      </div>
+    </form>
+
+    <div class="mt-4">
+      <h3 class="text-xs font-bold text-gray-700 mb-2">Histórico</h3>
+      <div id="history-list" class="space-y-2 max-h-40 overflow-y-auto"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="script.js" defer></script>
+</body>
+</html>
